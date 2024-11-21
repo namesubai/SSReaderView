@@ -214,27 +214,38 @@ public class SSReaderController: UIViewController {
 
 
 extension SSReaderController: SSReaderDataSource, SSReaderDelegate {
+   
+    
+    public func pageIdentifier(readerView: SSReaderView, pageNum: Int) -> String? {
+        if pageNum == 0 {
+            return NSStringFromClass(SSReaderCoverView.self)
+        } else if pageNum == pageCountOfReaderView(readerView: readerView) - 1 {
+            return NSStringFromClass(SSReaderEndView.self)
+        }
+        return NSStringFromClass(SSReaderContentView.self)
+    }
+    
     public func pageCountOfReaderView(readerView: SSReaderView) -> Int {
         chapterPages.count + 1 + 1
     }
     
-    public func pageContentView(readerView: SSReaderView, pageNum: Int) -> UIView {
+    public func pageContentView(readerView: SSReaderView, pageNum: Int, containerView: UIView?) -> UIView {
         if pageNum == 0 {
-            let contentView = readerView.dequeueReusableContentView(withReuseIdentifier: NSStringFromClass(SSReaderCoverView.self), for: pageNum) as!  SSReaderCoverView
+            let contentView = (containerView as? SSReaderCoverView) ??  SSReaderCoverView()
             contentView.backgroundColor = SSReaderManager.shared.themeType.currentType.value.contentBackgroudColor
             contentView.textLabel.text = book.desc
             contentView.textLabel.textColor = SSReaderManager.shared.themeType.currentType.value.contentTextColor
 
             return contentView
         } else if pageNum == pageCountOfReaderView(readerView: readerView) - 1 {
-            let contentView = readerView.dequeueReusableContentView(withReuseIdentifier: NSStringFromClass(SSReaderEndView.self), for: pageNum)
+            let contentView = (containerView as? SSReaderEndView) ??  SSReaderEndView()
             contentView.backgroundColor = SSReaderManager.shared.themeType.currentType.value.contentBackgroudColor
             return contentView
         }
         
         let chapter = chapterPages[pageNum - 1]
         
-        let contentView = readerView.dequeueReusableContentView(withReuseIdentifier: NSStringFromClass(SSReaderContentView.self), for: pageNum) as! SSReaderContentView
+        let contentView = (containerView as? SSReaderContentView) ??  SSReaderContentView()
         contentView.textLabel.textColor = SSReaderManager.shared.themeType.currentType.value.contentTextColor
         contentView.pageNumLabel.textColor = SSReaderManager.shared.themeType.currentType.value.contentTextColor
         contentView.backgroundColor = SSReaderManager.shared.themeType.currentType.value.contentBackgroudColor

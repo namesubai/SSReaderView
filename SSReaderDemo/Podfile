@@ -2,7 +2,7 @@ platform :ios, '10.0'
   use_frameworks!
 target 'SSReaderDemo' do
   inhibit_all_warnings!
-  pod 'SSReaderView', :path => '../../SSReader'
+  pod 'SSReaderView', :path => '../../SSReaderView'
   pod 'SnapKit'
   pod 'SSAlertSwift'
 end

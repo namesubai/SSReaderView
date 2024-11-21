@@ -10,7 +10,8 @@ import UIKit
 
 @objc public protocol SSReaderDataSource: NSObjectProtocol {
     func pageCountOfReaderView(readerView: SSReaderView) -> Int
-    func pageContentView(readerView: SSReaderView, pageNum: Int) -> UIView
+    func pageContentView(readerView: SSReaderView, pageNum: Int, containerView: UIView?) -> UIView
+    func pageIdentifier(readerView: SSReaderView, pageNum: Int) -> String?
     @objc optional func topToolView(readerView: SSReaderView) -> UIView?
     @objc optional func bottomToolView(readerView: SSReaderView) -> UIView?
 }
@@ -219,7 +220,7 @@ public class SSReaderView: UIView {
     public func transitionToPage(pageNum: Int, animated: Bool = false) {
         switch currentDisplayType {
         case .pageCurl:
-            let contentView = dataSource?.pageContentView(readerView: self, pageNum: pageNum)
+            let contentView = dataSource?.pageContentView(readerView: self, pageNum: pageNum, containerView: nil)
             let vc = SSReaderPageChildViewController(contentView: contentView)
             pageViewController.setViewControllers([vc], direction: .forward, animated: false, completion: nil)
             currentPage = pageNum
@@ -251,7 +252,7 @@ extension SSReaderView: UIPageViewControllerDataSource, UIPageViewControllerDele
         if currentPage <= 0 {
             return nil
         }
-        let contentView = dataSource?.pageContentView(readerView: self, pageNum: currentPage - 1)
+        let contentView = dataSource?.pageContentView(readerView: self, pageNum: currentPage - 1, containerView: nil)
         let vc = SSReaderPageChildViewController(contentView: contentView)
         willPreviousTransitionToViewController = vc
         return vc
@@ -263,7 +264,7 @@ extension SSReaderView: UIPageViewControllerDataSource, UIPageViewControllerDele
         if currentPage + 1 >= dataSource?.pageCountOfReaderView(readerView: self) ?? 0 {
             return nil
         }
-        let contentView = dataSource?.pageContentView(readerView: self, pageNum: currentPage + 1)
+        let contentView = dataSource?.pageContentView(readerView: self, pageNum: currentPage + 1, containerView: nil)
         let vc = SSReaderPageChildViewController(contentView: contentView)
         willNextTransitionToViewController = vc
         return vc
@@ -289,8 +290,15 @@ extension SSReaderView: UIPageViewControllerDataSource, UIPageViewControllerDele
 
 extension SSReaderView: UICollectionViewDataSource, SSReaderFlowLayoutDelegate, SSReaderFlowLayoutDataSoure {
     public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+       
         
-        if let contentView = self.dataSource?.pageContentView(readerView: self, pageNum: indexPath.row), let cell = contentView.cellView {
+        if let identifer = self.dataSource?.pageIdentifier(readerView: self, pageNum: indexPath.row) {
+            
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: identifer, for: IndexPath(item: indexPath.row, section: 0)) as! SSReaderContentCell
+            let conttainerView = self.dataSource?.pageContentView(readerView: self, pageNum: indexPath.row, containerView: cell.containerView)
+            if cell.containerView == nil, let conttainerView = conttainerView {
+                cell.containerView = conttainerView
+            }
             return cell
         }
         
@@ -321,17 +329,13 @@ extension SSReaderView {
     
     
     public func dequeueReusableContentView(withReuseIdentifier identifier: String, for pageNum: Int) -> UIView {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: identifier, for: IndexPath(item: pageNum, section: 0)) as! SSReaderContentCell
-        
+        if self.currentDisplayType != .pageCurl, let cell = self.collectionView.cellForItem(at: IndexPath(row: pageNum, section: 0)) as? SSReaderContentCell, let containerView = cell.containerView {
+            return containerView
+        }
         let contentViewClass = contentViews[identifier]
         assert(contentViewClass != nil, "请调用register(contentView：contentViewWithReuseIdentifier：）")
-        var contentView = cell.containerView
-        if cell.containerView == nil {
-            contentView = contentViewClass!.init()
-            contentView!.cellView = cell
-            cell.containerView = contentView
-        }
-        return contentView!
+        var contentView = contentViewClass!.init()
+        return contentView
     }
     
     public func pageContentView(pageNum: Int) -> UIView? {
@@ -358,12 +362,4 @@ extension UIView {
         return nil
     }
     
-    weak var cellView: UICollectionViewCell? {
-        set {
-            objc_setAssociatedObject(self, &cellViewKey, newValue , .OBJC_ASSOCIATION_ASSIGN)
-        }
-        get {
-            objc_getAssociatedObject(self, &cellViewKey) as? UICollectionViewCell
-        }
-    }
 }
